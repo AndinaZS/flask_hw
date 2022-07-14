@@ -11,7 +11,7 @@ class Advert(db.Model):
     id = Column(Integer, primary_key=True)
     title = Column(String(50), nullable=False)
     description = Column(Text)
-    created_at = Column(Date, default=datetime.now().date())
+    created_at = Column(Date, default=datetime.now().date)
     owner_id = Column(Integer, ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
     owner = relationship('User')
 
