@@ -11,16 +11,18 @@ advert_ns = Namespace('adverts')
 user_ns = Namespace('users')
 bcrypt = Bcrypt()
 
-def verify_data(schema, data):
-    try:
-        return  schema.load(data)
-    except exceptions.ValidationError as er:
-        raise HttpError(400, er.messages)
 
 class HttpError(Exception):
     def __init__(self, status_code, error_message):
         self.status_code = status_code
         self.error_message = error_message
+
+
+def verify_data(schema, data):
+    try:
+        return schema.load(data)
+    except exceptions.ValidationError as er:
+        raise HttpError(400, er.messages)
 
 
 @advert_ns.route('/')
@@ -71,7 +73,6 @@ class UsersView(Resource):
     def post(self):
         user_data = request.json
         user = verify_data(user_schema, user_data)
-        db.session.add(user)
         user.password = bcrypt.generate_password_hash(user.password.encode()).decode()
         db.session.add(user)
         try:
@@ -91,9 +92,12 @@ class UserView(Resource):
         user = User.query.get_or_404(uid, description='id does not exist')
         request_json = request.json
         user.email = request_json.get('email', user.email)
-        if request_json.get('password'):
-            user.password = bcrypt.generate_password_hash(request_json['password'].encode()).decode()
-        db.session.add(verify_data(user_schema, user_schema.dump(user)))
+        user.password = request_json.get('password', user.password)
+        verify_data(user_schema, user_schema.dump(user))
+        db.session.add(user)
+        user.password = bcrypt.generate_password_hash(request_json['password'].encode()).decode()\
+            if request_json.get('password') \
+            else user.password
         try:
             db.session.commit()
         except IntegrityError as er:
@@ -105,4 +109,3 @@ class UserView(Resource):
         db.session.delete(user)
         db.session.commit()
         return (f'{uid}', 204)
-
